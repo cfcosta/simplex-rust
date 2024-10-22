@@ -1,1 +1,1 @@
-pub mod ffi;
+pub struct Muchat;
