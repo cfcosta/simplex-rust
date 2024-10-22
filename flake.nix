@@ -37,8 +37,8 @@
           writeShellApplication
           ;
         inherit (pkgs.darwin.apple_sdk) frameworks;
-        inherit (pkgs.lib) optionals optionalString;
-        inherit (pkgs.stdenv) isDarwin isLinux;
+        inherit (pkgs.lib) optionalString;
+        inherit (pkgs.stdenv) isDarwin;
 
         rust = rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
         rustPlatform = makeRustPlatform {
@@ -77,6 +77,27 @@
         shell-patch = optionalString isDarwin ''
           export PATH=/usr/bin:$PATH
         '';
+
+        depsByArch = {
+          darwin = with frameworks; [
+            AppKit
+            ApplicationServices
+            CoreFoundation
+            CoreGraphics
+            CoreText
+            CoreVideo
+            IOSurface
+            Security
+          ];
+          linux = with pkgs; [
+            libxkbcommon
+            vulkan-loader
+            xorg.libxcb
+          ];
+        };
+
+        systemDeps = if isDarwin then depsByArch.darwin else depsByArch.linux;
+        vulkan = pkgs.vulkan-loader + "/lib";
       in
       {
         checks = {
@@ -89,15 +110,21 @@
           muchat = rustPlatform.buildRustPackage {
             name = "muchat";
             src = ./.;
-            cargoLock.lockFile = ./Cargo.lock;
+            cargoLock = {
+              lockFile = ./Cargo.lock;
+              outputHashes = {
+                "blade-graphics-0.5.0" = "";
+              };
+            };
             doCheck = false;
           };
         } // scripts;
-
         devShells.default = mkShell {
           shellHook = ''
             ${pre-commit-check.shellHook}
             ${shell-patch}
+
+            export LD_LIBRARY_PATH=${vulkan}:$LD_LIBRARY_PATH
           '';
 
           name = "muchat";
@@ -111,23 +138,7 @@
               cargo-nextest
               cargo-watch
             ]
-            ++ (
-              with frameworks;
-              optionals isDarwin [
-                CoreFoundation
-                CoreVideo
-                AppKit
-                IOSurface
-                CoreText
-                CoreGraphics
-                ApplicationServices
-                Security
-              ]
-            )
-            ++ optionals isLinux [
-              xorg.libxcb
-              libxkbcommon
-            ];
+            ++ systemDeps;
         };
       }
     );
