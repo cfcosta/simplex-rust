@@ -73,11 +73,6 @@
           };
         };
 
-        # Fixes a problem where building on Mac would fail for development.
-        shell-patch = optionalString isDarwin ''
-          export PATH=/usr/bin:$PATH
-        '';
-
         depsByArch = {
           darwin = with frameworks; [
             AppKit
@@ -89,15 +84,10 @@
             IOSurface
             Security
           ];
-          linux = with pkgs; [
-            libxkbcommon
-            vulkan-loader
-            xorg.libxcb
-          ];
+          linux = [ ];
         };
 
         systemDeps = if isDarwin then depsByArch.darwin else depsByArch.linux;
-        vulkan = pkgs.vulkan-loader + "/lib";
       in
       {
         checks = {
@@ -122,9 +112,7 @@
         devShells.default = mkShell {
           shellHook = ''
             ${pre-commit-check.shellHook}
-            ${shell-patch}
-
-            export LD_LIBRARY_PATH=${vulkan}:$LD_LIBRARY_PATH
+            export CC="${pkgs.clang}/bin/clang"
           '';
 
           name = "muchat";
