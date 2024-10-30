@@ -1,82 +1,74 @@
-use iced::highlighter;
-use iced::widget::{self, markdown, row, scrollable, text_editor};
-use iced::{Element, Fill, Font, Task, Theme};
+use iced::padding::{bottom, left, top};
+use iced::widget::{column, container, horizontal_rule, row, text, vertical_rule};
+use iced::Alignment::Center;
+use iced::Length::Fill;
+use iced::{color, Element};
+
+pub fn rem_to_px(rem: f32) -> f32 {
+    rem * 16.
+}
 
 pub fn main() -> iced::Result {
-    iced::application("Markdown - Iced", Markdown::update, Markdown::view)
-        .theme(Markdown::theme)
-        .run_with(Markdown::new)
+    iced::application("MuChat", Application::update, Application::view)
+        .theme(Application::theme)
+        .run()
 }
 
-struct Markdown {
-    content: text_editor::Content,
-    items: Vec<markdown::Item>,
-    theme: Theme,
+#[derive(Default)]
+struct Application {
+    value: i64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 enum Message {
-    Edit(text_editor::Action),
-    LinkClicked(markdown::Url),
+    Increment,
+    Decrement,
 }
 
-impl Markdown {
-    fn new() -> (Self, Task<Message>) {
-        const INITIAL_CONTENT: &str = include_str!("../overview.md");
-
-        let theme = Theme::TokyoNight;
-
-        (
-            Self {
-                content: text_editor::Content::with_text(INITIAL_CONTENT),
-                items: markdown::parse(INITIAL_CONTENT).collect(),
-                theme,
-            },
-            widget::focus_next(),
-        )
-    }
-
+impl Application {
     fn update(&mut self, message: Message) {
         match message {
-            Message::Edit(action) => {
-                let is_edit = action.is_edit();
-
-                self.content.perform(action);
-
-                if is_edit {
-                    self.items = markdown::parse(&self.content.text()).collect();
-                }
+            Message::Increment => {
+                self.value += 1;
             }
-            Message::LinkClicked(link) => {
-                let _ = open::that_in_background(link.to_string());
+            Message::Decrement => {
+                self.value -= 1;
             }
         }
     }
 
     fn view(&self) -> Element<Message> {
-        let editor = text_editor(&self.content)
-            .placeholder("Type your Markdown here...")
-            .on_action(Message::Edit)
-            .height(Fill)
-            .padding(10)
-            .font(Font::MONOSPACE)
-            .highlight("markdown", highlighter::Theme::Base16Ocean);
-
-        let preview = markdown(
-            &self.items,
-            markdown::Settings::default(),
-            markdown::Style::from_palette(self.theme.palette()),
-        )
-        .map(Message::LinkClicked);
-
-        row![editor, scrollable(preview).spacing(10).height(Fill)]
-            .spacing(10)
-            .padding(10)
-            .into()
+        Element::from(column![row![
+            container(
+                column![
+                    container(text("Chats").size(20))
+                        .align_x(Center)
+                        .align_y(Center)
+                        .height(48)
+                        .width(Fill),
+                    container(horizontal_rule(0.5)).padding(bottom(16)),
+                    column![
+                        text("Miguel"),
+                        text("Hello World!").size(10).color(color!(0xA1A1A1))
+                    ]
+                    .spacing(4)
+                    .padding(left(48))
+                    .width(Fill),
+                    container(horizontal_rule(0.5)).padding(top(16))
+                ]
+                .width(300)
+            ),
+            container(vertical_rule(0.5)).height(Fill),
+            container("No selected chat")
+                .align_x(Center)
+                .align_y(Center)
+                .width(Fill)
+                .height(Fill)
+        ]])
+        // .explain(color!(0xff0000))
     }
 
-    fn theme(&self) -> Theme {
-        self.theme.clone()
+    fn theme(&self) -> iced::Theme {
+        iced::Theme::CatppuccinMocha
     }
 }
-
